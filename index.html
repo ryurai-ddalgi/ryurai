@@ -199,267 +199,262 @@
     <button id="close-shop">닫기</button>
   </div>
 
-  <script>
-    const restartButton = document.getElementById("restart-button");
-    const game = document.getElementById("game");
-    const player = document.getElementById("player");
-    const gameOver = document.getElementById("game-over");
-    const gameOverText = document.getElementById("game-over-text");
-    const timerDisplay = document.getElementById("timer");
-    const strawberryCountDisplay = document.getElementById("strawberry-count");
-    const shopButton = document.getElementById("shop-button");
-    const shopModal = document.getElementById("shop-modal");
-    const closeShopButton = document.getElementById("close-shop");
-    const iconItemsContainer = document.getElementById("icon-items");
-    const characterItemsContainer = document.getElementById("character-items");
+ <script>
+  const restartButton = document.getElementById("restart-button");
+  const game = document.getElementById("game");
+  const player = document.getElementById("player");
+  const gameOver = document.getElementById("game-over");
+  const gameOverText = document.getElementById("game-over-text");
+  const timerDisplay = document.getElementById("timer");
+  const strawberryCountDisplay = document.getElementById("strawberry-count");
+  const shopButton = document.getElementById("shop-button");
+  const shopModal = document.getElementById("shop-modal");
+  const closeShopButton = document.getElementById("close-shop");
+  const iconItemsContainer = document.getElementById("icon-items");
+  const characterItemsContainer = document.getElementById("character-items");
 
-    let startTime = Date.now();
-    let gameRunning = true;
-    let invincible = false;
-    let fallSpeed = 4; // 초기 속도 유지
-    let objectInterval;
-    let timerInterval;
-    let paused = false;
-    let strawberries = 0;
-    let selectedIcon = "🍓";
-    let selectedCharacter = "👩🏻‍🍳";
+  let startTime = Date.now();
+  let gameRunning = true;
+  let invincible = false;
+  let fallSpeed = 4; // 초기 기본 속도
+  let objectInterval;
+  let timerInterval;
+  let paused = false;
+  let strawberries = 0;
+  let selectedIcon = "🍓";
+  let selectedCharacter = "👩🏻‍🍳";
+  let timeSurvived = 0; // 경과 시간(초)
 
-    // 아이템 목록 데이터
-    const iconItems = [
-      { icon: "🍓", cost: 0 },
-      { icon: "🍜", cost: 30 },
-      { icon: "🍦", cost: 50 },
-      { icon: "🍭", cost: 100 },
-    ];
+  // 아이템 목록 데이터
+  const iconItems = [
+    { icon: "🍓", cost: 0 },
+    { icon: "🍜", cost: 30 },
+    { icon: "🍦", cost: 50 },
+    { icon: "🍭", cost: 100 },
+  ];
 
-    const characterItems = [
-      { icon: "👩🏻‍🍳", cost: 0 },
-      { icon: "👨🏻‍🍳", cost: 0 },
-      { icon: "👩🏻‍🔬", cost: 30 },
-      { icon: "👨🏻‍🔬", cost: 30 },
-      { icon: "👮🏻‍♀️", cost: 50 },
-      { icon: "👮🏻‍♂️", cost: 50 },
-      { icon: "👩🏻‍🎓", cost: 100 },
-      { icon: "👨🏻‍🎓", cost: 100 },
-    ];
+  const characterItems = [
+    { icon: "👩🏻‍🍳", cost: 0 },
+    { icon: "👨🏻‍🍳", cost: 0 },
+    { icon: "👩🏻‍🔬", cost: 30 },
+    { icon: "👨🏻‍🔬", cost: 30 },
+    { icon: "👮🏻‍♀️", cost: 50 },
+    { icon: "👮🏻‍♂️", cost: 50 },
+    { icon: "👩🏻‍🎓", cost: 100 },
+    { icon: "👨🏻‍🎓", cost: 100 },
+  ];
 
-    // 타이머 업데이트
-    function updateTimer() {
-      if (paused) return;
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
-      const seconds = String(elapsed % 60).padStart(2, '0');
-      timerDisplay.textContent = `${minutes}:${seconds}`;
+  // 타이머 업데이트
+  function updateTimer() {
+    if (paused) return;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    timeSurvived = elapsed;  // 경과 시간 저장
 
-      // 딸기 지급 (45초마다 10개)
-      if (elapsed > 0 && elapsed % 45 === 0 && strawberries < 10000) {
-        strawberries += 10;
-        strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
-      }
-    }
+    const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const seconds = String(elapsed % 60).padStart(2, '0');
+    timerDisplay.textContent = `${minutes}:${seconds}`;
 
-    // 충돌 체크 함수
-    function isCollision(rect1, rect2) {
-      return !(
-        rect1.right < rect2.left ||
-        rect1.left > rect2.right ||
-        rect1.bottom < rect2.top ||
-        rect1.top > rect2.bottom
-      );
-    }
-
-    // 객체 생성 함수
-    function createObject() {
-      if (!gameRunning || paused) return;
-
-      const obj = document.createElement("div");
-      obj.classList.add("falling");
-
-      // 수박 확률 15~50% 랜덤
-      const watermelonChance = 0.15 + Math.random() * 0.35;
-      const isWatermelon = Math.random() < watermelonChance;
-
-      obj.textContent = isWatermelon ? "🍉" : selectedIcon;
-      obj.style.left = Math.random() * (window.innerWidth - 30) + "px";
-      obj.style.top = "-50px";
-      obj.style.animationDuration = `${4 + Math.random() * 2}s`;
-
-      game.appendChild(obj);
-
-      let posY = -50;
-      const speed = fallSpeed + Math.random() * 1.5;
-
-      function fall() {
-        if (!gameRunning) {
-          obj.remove();
-          return;
-        }
-        if (paused) {
-          requestAnimationFrame(fall);
-          return;
-        }
-
-        posY += speed;
-        obj.style.top = posY + "px";
-
-        // 바닥 지나가면 삭제
-        if (posY > window.innerHeight) {
-          obj.remove();
-          return;
-        }
-
-        // 충돌 체크
-        const playerRect = player.getBoundingClientRect();
-        const objRect = obj.getBoundingClientRect();
-
-        if (!invincible && isCollision(playerRect, objRect)) {
-          if (isWatermelon) {
-            // 수박 충돌 시 무적 활성 + 5초간 무적 유지
-            invincible = true;
-            player.style.opacity = "0.5";
-            setTimeout(() => {
-              invincible = false;
-              player.style.opacity = "1";
-            }, 5000);
-            obj.remove();
-            return;
-          } else {
-            // 딸기 충돌 시 게임 오버
-            endGame();
-            obj.remove();
-            return;
-          }
-        }
-
-        requestAnimationFrame(fall);
-      }
-
-      fall();
-    }
-
-    // 게임 오버 처리
-    function endGame() {
-      gameRunning = false;
-      gameOver.style.display = "block";
-      gameOverText.textContent = `게임 오버! 점수: ${strawberries} 딸기 🍓`;
-    }
-
-    // 아이템 생성 반복 시작
-    function startObjectGeneration() {
-      if (objectInterval) clearInterval(objectInterval);
-      objectInterval = setInterval(() => {
-        if (gameRunning && !paused) createObject();
-      }, 500);
-    }
-
-    // 타이머 시작
-    function startTimer() {
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        updateTimer();
-      }, 1000);
-    }
-
-    // 게임 재시작
-    function restartGame() {
-      // 초기화
-      strawberries = 0;
+    // 딸기 지급 (45초마다 10개)
+    if (elapsed > 0 && elapsed % 45 === 0 && strawberries < 10000) {
+      strawberries += 10;
       strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
-      startTime = Date.now();
-      gameRunning = true;
-      invincible = false;
-      paused = false;
-      gameOver.style.display = "none";
-      player.style.opacity = "1";
-      player.textContent = selectedCharacter;
+    }
+  }
 
-      // 플레이어 위치 초기화 (x: 중앙, y: 밑 고정)
-      player.style.left = (window.innerWidth / 2 - 20) + "px";
-      player.style.bottom = "30px";
+  // 충돌 체크 함수
+  function isCollision(rect1, rect2) {
+    return !(
+      rect1.right < rect2.left ||
+      rect1.left > rect2.right ||
+      rect1.bottom < rect2.top ||
+      rect1.top > rect2.bottom
+    );
+  }
 
-      // 떨어지는 객체 모두 제거
-      document.querySelectorAll(".falling").forEach(el => el.remove());
+  // 객체 생성 함수
+  function createObject() {
+    if (!gameRunning || paused) return;
 
-      startObjectGeneration();
-      startTimer();
+    const obj = document.createElement("div");
+    obj.classList.add("falling");
+
+    const watermelonChance = 0.10;
+    const isWatermelon = Math.random() < watermelonChance;
+
+    obj.textContent = isWatermelon ? "🍉" : selectedIcon;
+    obj.style.left = Math.random() * (window.innerWidth - 30) + "px";
+    obj.style.top = "-50px";
+    obj.style.animationDuration = `${4 + Math.random() * 2}s`;
+
+    game.appendChild(obj);
+
+    let posY = -50;
+    // 시간이 지남에 따라 속도 증가, 랜덤 추가 속도 포함
+    const speed = fallSpeed + timeSurvived * 0.1 + Math.random() * 1.5;
+
+    function fall() {
+      if (!gameRunning) {
+        obj.remove();
+        return;
+      }
+      if (paused) {
+        requestAnimationFrame(fall);
+        return;
+      }
+
+      posY += speed;
+      obj.style.top = posY + "px";
+
+      // 화면 아래로 지나가면 제거
+      if (posY > window.innerHeight) {
+        obj.remove();
+        return;
+      }
+
+      const playerRect = player.getBoundingClientRect();
+      const objRect = obj.getBoundingClientRect();
+
+      if (!invincible && isCollision(playerRect, objRect)) {
+        if (isWatermelon) {
+          // 수박 충돌 시 무적 상태 부여 (5초)
+          invincible = true;
+          player.style.opacity = "0.5";
+          setTimeout(() => {
+            invincible = false;
+            player.style.opacity = "1";
+          }, 5000);
+          obj.remove();
+          return;
+        } else {
+          // 딸기 충돌 시 게임 오버
+          endGame();
+          obj.remove();
+          return;
+        }
+      }
+
+      requestAnimationFrame(fall);
     }
 
-    restartButton.addEventListener("click", () => {
-      restartGame();
-    });
+    fall();
+  }
 
-    // 상점 열기/닫기
-    shopButton.addEventListener("click", () => {
-      paused = true;
-      shopModal.style.display = "block";
-    });
+  // 게임 오버 처리
+  function endGame() {
+    gameRunning = false;
+    gameOver.style.display = "block";
+    gameOverText.textContent = `게임 오버! 점수: ${strawberries} 딸기 🍓`;
+  }
 
-    closeShopButton.addEventListener("click", () => {
-      paused = false;
-      shopModal.style.display = "none";
-    });
+  // 아이템 생성 반복 시작
+  function startObjectGeneration() {
+    if (objectInterval) clearInterval(objectInterval);
+    objectInterval = setInterval(() => {
+      if (gameRunning && !paused) createObject();
+    }, 500);  // 0.5초마다 객체 생성 (딸기+수박 합산)
+  }
 
-    // 아이템 리스트 표시 및 선택 기능
-    function renderShopItems() {
-      iconItemsContainer.innerHTML = "";
-      characterItemsContainer.innerHTML = "";
+  // 타이머 시작
+  function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      updateTimer();
+    }, 1000);
+  }
 
-      iconItems.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item";
-        if (item.icon === selectedIcon) div.classList.add("selected");
-        div.innerHTML = `<div class="icon">${item.icon}</div><div class="cost">${item.cost > 0 ? item.cost + "🍓" : "무료"}</div>`;
-        div.addEventListener("click", () => {
-          if (item.cost > strawberries) {
-            alert("딸기가 부족합니다!");
-            return;
-          }
-          strawberries -= item.cost;
-          strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
-          selectedIcon = item.icon;
-          renderShopItems();
-        });
-        iconItemsContainer.appendChild(div);
+  // 게임 재시작
+  function restartGame() {
+    strawberries = 0;
+    strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
+    startTime = Date.now();
+    gameRunning = true;
+    invincible = false;
+    paused = false;
+    gameOver.style.display = "none";
+    player.style.opacity = "1";
+    player.textContent = selectedCharacter;
+
+    player.style.left = (window.innerWidth / 2 - 20) + "px";
+    player.style.bottom = "30px";
+
+    document.querySelectorAll(".falling").forEach(el => el.remove());
+
+    startObjectGeneration();
+    startTimer();
+  }
+
+  restartButton.addEventListener("click", () => {
+    restartGame();
+  });
+
+  // 상점 열기/닫기
+  shopButton.addEventListener("click", () => {
+    paused = true;
+    shopModal.style.display = "block";
+  });
+
+  closeShopButton.addEventListener("click", () => {
+    paused = false;
+    shopModal.style.display = "none";
+  });
+
+  // 상점 아이템 표시 및 선택
+  function renderShopItems() {
+    iconItemsContainer.innerHTML = "";
+    characterItemsContainer.innerHTML = "";
+
+    iconItems.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "item";
+      if (item.icon === selectedIcon) div.classList.add("selected");
+      div.innerHTML = `<div class="icon">${item.icon}</div><div class="cost">${item.cost > 0 ? item.cost + "🍓" : "무료"}</div>`;
+      div.addEventListener("click", () => {
+        if (item.cost > strawberries) {
+          alert("딸기가 부족합니다!");
+          return;
+        }
+        strawberries -= item.cost;
+        strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
+        selectedIcon = item.icon;
+        renderShopItems();
       });
-
-      characterItems.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item";
-        if (item.icon === selectedCharacter) div.classList.add("selected");
-        div.innerHTML = `<div class="icon">${item.icon}</div><div class="cost">${item.cost > 0 ? item.cost + "🍓" : "무료"}</div>`;
-        div.addEventListener("click", () => {
-          if (item.cost > strawberries) {
-            alert("딸기가 부족합니다!");
-            return;
-          }
-          strawberries -= item.cost;
-          strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
-          selectedCharacter = item.icon;
-          player.textContent = selectedCharacter;
-          renderShopItems();
-        });
-        characterItemsContainer.appendChild(div);
-      });
-    }
-
-    // 플레이어 이동 (마우스 X 위치 따라가기, Y축 고정)
-    window.addEventListener("mousemove", (e) => {
-      if (!gameRunning || paused) return;
-      // 화면 경계 넘지 않도록 계산 (가로)
-      const playerWidth = player.offsetWidth;
-      let newX = e.clientX - playerWidth / 2;
-      if (newX < 0) newX = 0;
-      if (newX > window.innerWidth - playerWidth) newX = window.innerWidth - playerWidth;
-      player.style.left = newX + "px";
-      // Y축은 고정 (아래쪽)
-      player.style.bottom = "30px";
+      iconItemsContainer.appendChild(div);
     });
 
-    // 시작 시 초기화
-    window.onload = () => {
-      restartGame();
-      renderShopItems();
-    };
-  </script>
-</body>
-</html>
+    characterItems.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "item";
+      if (item.icon === selectedCharacter) div.classList.add("selected");
+      div.innerHTML = `<div class="icon">${item.icon}</div><div class="cost">${item.cost > 0 ? item.cost + "🍓" : "무료"}</div>`;
+      div.addEventListener("click", () => {
+        if (item.cost > strawberries) {
+          alert("딸기가 부족합니다!");
+          return;
+        }
+        strawberries -= item.cost;
+        strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
+        selectedCharacter = item.icon;
+        player.textContent = selectedCharacter;
+        renderShopItems();
+      });
+      characterItemsContainer.appendChild(div);
+    });
+  }
+
+  // 플레이어 마우스 X축 이동
+  window.addEventListener("mousemove", (e) => {
+    if (!gameRunning || paused) return;
+    const playerWidth = player.offsetWidth;
+    let newX = e.clientX - playerWidth / 2;
+    if (newX < 0) newX = 0;
+    if (newX > window.innerWidth - playerWidth) newX = window.innerWidth - playerWidth;
+    player.style.left = newX + "px";
+    player.style.bottom = "30px";
+  });
+
+  // 초기화
+  window.onload = () => {
+    restartGame();
+    renderShopItems();
+  };
+</script>
