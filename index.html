@@ -436,6 +436,31 @@
     player.style.bottom = "30px";
   });
 
+function isMobile() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+if (isMobile()) {
+  window.addEventListener("deviceorientation", (event) => {
+    if (!gameRunning || paused) return;
+
+    const gamma = event.gamma;
+    if (gamma === null) return;
+
+    const maxTilt = 30; 
+    let tilt = Math.min(Math.max(gamma, -maxTilt), maxTilt);
+
+    let normalized = (tilt + maxTilt) / (2 * maxTilt);
+
+    let newX = normalized * (window.innerWidth - player.offsetWidth);
+
+    if (newX < 0) newX = 0;
+    if (newX > window.innerWidth - player.offsetWidth) newX = window.innerWidth - player.offsetWidth;
+    player.style.left = newX + "px";
+    player.style.bottom = "30px";
+  });
+}
+
   window.onload = () => {
     restartGame();
     renderShopItems();
