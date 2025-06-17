@@ -22,23 +22,16 @@
       font-size: 40px;
       pointer-events: none;
       transition: transform 0.05s linear;
+      bottom: 30px; /* 밑에서 고정 */
+      user-select: none;
     }
 
     .falling {
       position: absolute;
       font-size: 32px;
-      animation-name: fall;
       animation-timing-function: linear;
       animation-fill-mode: forwards;
-    }
-
-    @keyframes fall {
-      from {
-        top: -50px;
-      }
-      to {
-        top: 100vh;
-      }
+      user-select: none;
     }
 
     #timer {
@@ -259,54 +252,33 @@
       timerDisplay.textContent = `${minutes}:${seconds}`;
 
       // 딸기 지급 (45초마다 10개)
-      if (elapsed > 0 && elapsed % 45 === 0 && !paused) {
+      if (elapsed > 0 && elapsed % 45 === 0 && strawberries < 10000) {
         strawberries += 10;
         strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
-        paused = true; // 중복 지급 방지
-        setTimeout(() => { paused = false; }, 1000);
       }
-
-      return elapsed;
     }
 
-    // 캐릭터 이동 (x축, y축 제한)
-    function moveCharacter(x, y) {
-      const boundedX = Math.min(Math.max(x, 0), window.innerWidth);
-      const boundedY = Math.min(Math.max(y, 0), window.innerHeight);
-      player.style.left = `${boundedX - player.offsetWidth / 2}px`;
-      player.style.top = `${boundedY - player.offsetHeight / 2}px`;
+    // 충돌 체크 함수
+    function isCollision(rect1, rect2) {
+      return !(
+        rect1.right < rect2.left ||
+        rect1.left > rect2.right ||
+        rect1.bottom < rect2.top ||
+        rect1.top > rect2.bottom
+      );
     }
 
-    document.addEventListener("mousemove", (e) => {
-      if (gameRunning && !paused) moveCharacter(e.clientX, e.clientY);
-    });
-
-    document.addEventListener("touchmove", (e) => {
-      if (gameRunning && !paused && e.touches.length > 0) {
-        moveCharacter(e.touches[0].clientX, e.touches[0].clientY);
-        e.preventDefault();
-      }
-    }, { passive: false });
-
-    // 게임 종료 함수
-    function endGame() {
-      gameRunning = false;
-      paused = false;
-      clearInterval(objectInterval);
-      clearInterval(timerInterval);
-      const finalTime = Math.floor((Date.now() - startTime) / 1000);
-      gameOverText.innerHTML = `게임 오버!<br>생존 시간: ${finalTime}초<br>획득 딸기: ${strawberries}개`;
-      gameOver.style.display = "block";
-    }
-
-    // 떨어지는 객체 생성
+    // 객체 생성 함수
     function createObject() {
-      if (!gameRunning) return;
+      if (!gameRunning || paused) return;
 
       const obj = document.createElement("div");
-      obj.className = "falling";
+      obj.classList.add("falling");
 
-      const isWatermelon = Math.random() < 0.1; // 10% 수박, 나머지 딸기
+      // 수박 확률 15~50% 랜덤
+      const watermelonChance = 0.15 + Math.random() * 0.35;
+      const isWatermelon = Math.random() < watermelonChance;
+
       obj.textContent = isWatermelon ? "🍉" : selectedIcon;
       obj.style.left = Math.random() * (window.innerWidth - 30) + "px";
       obj.style.top = "-50px";
@@ -322,6 +294,11 @@
           obj.remove();
           return;
         }
+        if (paused) {
+          requestAnimationFrame(fall);
+          return;
+        }
+
         posY += speed;
         obj.style.top = posY + "px";
 
@@ -337,20 +314,18 @@
 
         if (!invincible && isCollision(playerRect, objRect)) {
           if (isWatermelon) {
-            // 수박 충돌 시 게임오버
-            endGame();
-            obj.remove();
-            return;
-          } else {
-            // 딸기 충돌 시 딸기 +1, 무적 상태
-            strawberries++;
-            strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
+            // 수박 충돌 시 무적 활성 + 5초간 무적 유지
             invincible = true;
             player.style.opacity = "0.5";
             setTimeout(() => {
               invincible = false;
               player.style.opacity = "1";
-            }, 1000);
+            }, 5000);
+            obj.remove();
+            return;
+          } else {
+            // 딸기 충돌 시 게임 오버
+            endGame();
             obj.remove();
             return;
           }
@@ -362,18 +337,16 @@
       fall();
     }
 
-    // 충돌 체크 함수 (사각형 간 단순 충돌 체크)
-    function isCollision(rect1, rect2) {
-      return !(
-        rect1.right < rect2.left ||
-        rect1.left > rect2.right ||
-        rect1.bottom < rect2.top ||
-        rect1.top > rect2.bottom
-      );
+    // 게임 오버 처리
+    function endGame() {
+      gameRunning = false;
+      gameOver.style.display = "block";
+      gameOverText.textContent = `게임 오버! 당신의 점수: ${strawberries} 딸기 🍓`;
     }
 
     // 아이템 생성 반복 시작
     function startObjectGeneration() {
+      if (objectInterval) clearInterval(objectInterval);
       objectInterval = setInterval(() => {
         if (gameRunning && !paused) createObject();
       }, 500);
@@ -381,6 +354,7 @@
 
     // 타이머 시작
     function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         updateTimer();
       }, 1000);
@@ -398,6 +372,10 @@
       gameOver.style.display = "none";
       player.style.opacity = "1";
       player.textContent = selectedCharacter;
+
+      // 플레이어 위치 초기화 (x: 중앙, y: 밑 고정)
+      player.style.left = (window.innerWidth / 2 - 20) + "px";
+      player.style.bottom = "30px";
 
       // 떨어지는 객체 모두 제거
       document.querySelectorAll(".falling").forEach(el => el.remove());
@@ -463,6 +441,19 @@
         characterItemsContainer.appendChild(div);
       });
     }
+
+    // 플레이어 이동 (마우스 X 위치 따라가기, Y축 고정)
+    window.addEventListener("mousemove", (e) => {
+      if (!gameRunning || paused) return;
+      // 화면 경계 넘지 않도록 계산 (가로)
+      const playerWidth = player.offsetWidth;
+      let newX = e.clientX - playerWidth / 2;
+      if (newX < 0) newX = 0;
+      if (newX > window.innerWidth - playerWidth) newX = window.innerWidth - playerWidth;
+      player.style.left = newX + "px";
+      // Y축은 고정 (아래쪽)
+      player.style.bottom = "30px";
+    });
 
     // 시작 시 초기화
     window.onload = () => {
