@@ -254,7 +254,7 @@
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
       const seconds = String(elapsed % 60).padStart(2, '0');
-      timerDisplay.textContent = ${minutes}:${seconds};
+      timerDisplay.textContent = `${minutes}:${seconds}`;
 
       // 딸기 지급 (45초마다 10개)
       if (elapsed > 0 && elapsed % 45 === 0 && !paused) {
@@ -268,27 +268,23 @@
       return elapsed;
     }
 
-   // 캐릭터 이동 (x축만, y축은 화면 맨 아래 고정)
-function moveCharacter(x) {
-  const boundedX = Math.min(Math.max(x, 0), window.innerWidth - player.offsetWidth);
-  const fixedY = window.innerHeight - player.offsetHeight - 10; // 아래서 10px 띄우기 여유
-  player.style.left = `${boundedX}px`;
-  player.style.top = `${fixedY}px`;
-}
+    // 캐릭터 이동 (x축, y축 제한)
+    function moveCharacter(x, y) {
+      const boundedX = Math.min(Math.max(x, 0), window.innerWidth);
+      const boundedY = Math.min(Math.max(y, 0), window.innerHeight);
+      player.style.left = ${boundedX - player.offsetWidth / 2}px;
+      player.style.top = ${boundedY - player.offsetHeight / 2}px;
+    }
 
-document.addEventListener("mousemove", (e) => {
-  if (gameRunning) moveCharacter(e.clientX);
-});
+    document.addEventListener("mousemove", (e) => {
+      if (gameRunning) moveCharacter(e.clientX, e.clientY);
+    });
 
-document.addEventListener("touchmove", (e) => {
-  if (gameRunning && e.touches.length > 0) {
-    moveCharacter(e.touches[0].clientX);
-  }
-}, { passive: false });
-
-// 초기 위치 설정도 x 중앙, y 고정으로 변경
-moveCharacter(window.innerWidth / 2);
-
+    document.addEventListener("touchmove", (e) => {
+      if (gameRunning && e.touches.length > 0) {
+        moveCharacter(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
 
     // 게임 종료 함수
     function endGame() {
@@ -297,7 +293,7 @@ moveCharacter(window.innerWidth / 2);
       clearInterval(objectInterval);
       clearInterval(timerInterval);
       const finalTime = Math.floor((Date.now() - startTime) / 1000);
-      gameOverText.innerHTML = 게임 오버!<br>생존 시간: ${finalTime}초<br>획득 딸기: ${strawberries}개;
+      gameOverText.innerHTML = `게임 오버!<br>생존 시간: ${finalTime}초<br>획득 딸기: ${strawberries}개`;
       gameOverText.style.display = "block";
     }
 
@@ -311,10 +307,10 @@ moveCharacter(window.innerWidth / 2);
       const isWatermelon = Math.random() < (Math.random() * 0.05 + 0.05);
       obj.textContent = isWatermelon ? "🍉" : selectedIcon;
 
-      obj.style.left = ${Math.random() * (window.innerWidth - 30)}px;
+      obj.style.left = `${Math.random() * (window.innerWidth - 30)}px`;
       // 애니메이션 지속시간 = 6 - fallSpeed (최소 1초 보장)
       const duration = Math.max(1, 6 - Math.min(5, fallSpeed));
-      obj.style.animationDuration = ${duration}s;
+      obj.style.animationDuration = `${duration}s`;
 
       game.appendChild(obj);
 
@@ -382,12 +378,12 @@ moveCharacter(window.innerWidth / 2);
         const div = document.createElement("div");
         div.className = "item";
         if (selectedIcon === item.icon) div.classList.add("selected");
-        div.innerHTML = <div class="icon">${item.icon}</div><div class="cost">${item.cost} 🍓</div>;
+        div.innerHTML = `<div class="icon">${item.icon}</div><div class="cost">${item.cost} 🍓</div>`;
         div.addEventListener("click", () => {
           if (item.cost <= strawberries) {
             strawberries -= item.cost;
             selectedIcon = item.icon;
-            strawberryCountDisplay.textContent = 🍓: ${strawberries};
+            strawberryCountDisplay.textContent = `🍓: ${strawberries}`;
             renderShopItems();
           } else {
             alert("딸기가 부족합니다!");
@@ -402,7 +398,7 @@ moveCharacter(window.innerWidth / 2);
         const div = document.createElement("div");
         div.className = "item";
         if (selectedCharacter === item.icon) div.classList.add("selected");
-        div.innerHTML = <div class="icon">${item.icon}</div><div class="cost">${item.cost} 🍓</div>;
+        div.innerHTML = `<div class="icon">${item.icon}</div><div class="cost">${item.cost} 🍓</div>`;
         div.addEventListener("click", () => {
           if (item.cost <= strawberries) {
             strawberries -= item.cost;
