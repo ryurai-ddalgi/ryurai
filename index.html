@@ -487,25 +487,51 @@ function isMobile() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
-if (isMobile()) {
+function isMobile() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+function requestMotionPermission() {
+  if (
+    typeof DeviceOrientationEvent !== "undefined" &&
+    typeof DeviceOrientationEvent.requestPermission === "function"
+  ) {
+    DeviceOrientationEvent.requestPermission()
+      .then((response) => {
+        if (response === "granted") {
+          enableDeviceTiltControl();
+        } else {
+          alert("모션 권한이 거부되었습니다.");
+        }
+      })
+      .catch(console.error);
+  } else {
+    enableDeviceTiltControl();
+  }
+}
+
+function enableDeviceTiltControl() {
   window.addEventListener("deviceorientation", (event) => {
     if (!gameRunning || paused) return;
 
     const gamma = event.gamma;
     if (gamma === null) return;
 
-    const maxTilt = 30; 
+    const maxTilt = 30;
     let tilt = Math.min(Math.max(gamma, -maxTilt), maxTilt);
-
     let normalized = (tilt + maxTilt) / (2 * maxTilt);
-
     let newX = normalized * (window.innerWidth - player.offsetWidth);
 
-    if (newX < 0) newX = 0;
-    if (newX > window.innerWidth - player.offsetWidth) newX = window.innerWidth - player.offsetWidth;
+    newX = Math.max(0, Math.min(newX, window.innerWidth - player.offsetWidth));
     player.style.left = newX + "px";
-    player.style.bottom = "30px";
   });
+}
+
+if (isMobile()) {
+  // 최초 터치 한 번만 권한 요청 및 이벤트 연결
+  document.body.addEventListener("touchstart", () => {
+    requestMotionPermission();
+  }, { once: true });
 }
 
   window.onload = () => {
