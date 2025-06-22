@@ -342,10 +342,10 @@
       posY += speed;
       obj.style.top = posY + "px";
 
-      if (posY > window.innerHeight) {
-        obj.remove();
-        return;
-      }
+     if (posY > game.clientHeight + 50) {
+  obj.remove();
+  return;
+}
 
       const playerRect = player.getBoundingClientRect();
       const objRect = obj.getBoundingClientRect();
