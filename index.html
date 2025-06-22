@@ -413,9 +413,13 @@
     startTimer();
   }
 
-  restartButton.addEventListener("click", () => {
-    restartGame();
-  });
+ restartButton.addEventListener("click", () => {
+  if (isMobile()) {
+    requestMotionPermission(); // 모바일이면 기울기 권한 요청
+  }
+  restartGame(); // 게임 재시작
+});
+
 
   shopButton.addEventListener("click", () => {
     paused = true;
@@ -508,8 +512,5 @@ if (isMobile()) {
     restartGame();
     renderShopItems();
     
-    if (isMobile()) {
-      requestMotionPermission();
-    }
   };
 </script>
